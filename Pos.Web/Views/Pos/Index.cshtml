@@ -1,0 +1,717 @@
+﻿@{
+    ViewData["Title"] = "POS";
+}
+
+@section Styles {
+    <style type="text/css">
+        /* Impresión CSS*/
+        @@media print {
+            body * {
+                visibility: hidden !important;
+            }
+
+            #ticketCard, #ticketCard * {
+                visibility: visible !important;
+            }
+
+            #ticketCard {
+                position: absolute !important;
+                left: 0 !important;
+                top: 0 !important;
+                width: 100% !important;
+                box-shadow: none !important;
+            }
+            /* Oculta botones en impresión */
+            #btnHideTicket, #btnPrintTicket {
+                display: none !important;
+            }
+        }
+    </style>
+}
+
+<div class="row g-3">
+    <!-- IZQUIERDA: Búsqueda + resultados -->
+    <div class="col-lg-7">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title mb-3"><i class="bi bi-search"></i> Buscar productos</h5>
+
+                <div class="input-group">
+                    <input id="searchInput" class="form-control" placeholder="SKU o nombre..." />
+                    <button id="btnSearch" class="btn btn-dark" type="button">
+                        <i class="bi bi-search"></i>
+                    </button>
+                </div>
+
+                <div class="mt-3" id="searchStatus"></div>
+
+                <div class="mt-3">
+                    <div class="list-group" id="results"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Ticket -->
+        <div class="card shadow-sm mt-3 d-none" id="ticketCard">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-receipt"></i> Ticket</h5>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-sm btn-outline-primary" type="button" id="btnPrintTicket">
+                            <i class="bi bi-printer"></i> Imprimir
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary" type="button" id="btnHideTicket">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="text-muted small mt-1" id="ticketMeta"></div>
+
+                <div class="mt-2" id="ticketLines"></div>
+
+                <hr />
+                <div class="d-flex justify-content-between">
+                    <span>Subtotal</span>
+                    <strong id="ticketSubtotal">$0.00</strong>
+                </div>
+                <div class="d-flex justify-content-between">
+                    <span>IVA</span>
+                    <strong id="ticketIva">$0.00</strong>
+                </div>
+                <div class="d-flex justify-content-between">
+                    <span>IEPS</span>
+                    <strong id="ticketIeps">$0.00</strong>
+                </div>
+                <div class="d-flex justify-content-between fs-5 mt-2">
+                    <span>Total</span>
+                    <strong id="ticketTotal">$0.00</strong>
+                </div>
+                <div class="d-flex justify-content-between">
+                    <span>Cambio</span>
+                    <strong id="ticketChange">$0.00</strong>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- DERECHA: Carrito -->
+    <div class="col-lg-5">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h5 class="card-title mb-0"><i class="bi bi-cart"></i> Carrito</h5>
+                    <button id="btnClear" class="btn btn-sm btn-outline-danger" type="button">
+                        <i class="bi bi-trash"></i> Vaciar
+                    </button>
+                </div>
+
+                <div id="cartEmpty" class="text-muted">Agrega productos para comenzar.</div>
+                <div class="list-group mt-2" id="cart"></div>
+
+                <hr />
+
+                <div class="d-flex justify-content-between">
+                    <span>Subtotal</span>
+                    <strong id="tSubtotal">$0.00</strong>
+                </div>
+                <div class="d-flex justify-content-between">
+                    <span>IVA (estimado)</span>
+                    <strong id="tIva">$0.00</strong>
+                </div>
+                <div class="d-flex justify-content-between">
+                    <span>IEPS (estimado)</span>
+                    <strong id="tIeps">$0.00</strong>
+                </div>
+                <div class="d-flex justify-content-between fs-5 mt-2">
+                    <span>Total</span>
+                    <strong id="tTotal">$0.00</strong>
+                </div>
+
+                <button id="btnCharge" class="btn btn-success w-100 mt-3" type="button" disabled>
+                    <i class="bi bi-credit-card-2-front"></i> Cobrar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Cobro -->
+<div class="modal fade" id="payModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-cash-coin"></i> Cobrar</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+
+            <div class="modal-body">
+                <div class="mb-2">
+                    <div class="small text-muted">Total a pagar</div>
+                    <div class="fs-4 fw-bold" id="modalTotal">$0.00</div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Método</label>
+                    <select id="payMethod" class="form-select">
+                        <option value="CASH">Efectivo</option>
+                        <option value="CARD">Tarjeta</option>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Monto</label>
+                    <input id="payAmount" class="form-control" type="number" step="0.01" min="0" />
+                    <div class="form-text" id="payAmountHint"></div>
+                </div>
+
+                <div class="mb-3 d-none" id="refBlock">
+                    <label class="form-label">Referencia (Tarjeta)</label>
+                    <input id="payRef" class="form-control" placeholder='Ej: 112233' />
+                    <div class="form-text">Si contiene <b>FAIL</b>, el pago será rechazado.</div>
+                </div>
+
+                <div class="alert alert-danger d-none" id="payError"></div>
+                <div class="alert alert-success d-none" id="paySuccess"></div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                <button id="btnConfirmPay" type="button" class="btn btn-primary">
+                    <i class="bi bi-check2-circle"></i> Confirmar pago
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast -->
+<div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1100;">
+    <div id="appToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="toast-header">
+            <i class="bi bi-info-circle me-2"></i>
+            <strong class="me-auto" id="toastTitle">Mensaje</strong>
+            <small class="text-muted" id="toastTime">ahora</small>
+            <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Cerrar"></button>
+        </div>
+        <div class="toast-body" id="toastBody"></div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // ----------------------------
+        // Config
+        // ----------------------------
+        const VAT_RATE = 0.16;
+
+        // ----------------------------
+        // State
+        // ----------------------------
+        const cart = new Map();
+        let isCharging = false;
+        let debounceTimer = null;
+        let lastSearchTerm = "";
+
+        // ----------------------------
+        // Consts
+        // ----------------------------
+        const searchInput = document.getElementById("searchInput");
+        const btnSearch = document.getElementById("btnSearch");
+        const resultsEl = document.getElementById("results");
+        const searchStatus = document.getElementById("searchStatus");
+
+        const cartEl = document.getElementById("cart");
+        const cartEmpty = document.getElementById("cartEmpty");
+        const btnClear = document.getElementById("btnClear");
+        const btnCharge = document.getElementById("btnCharge");
+
+        const tSubtotal = document.getElementById("tSubtotal");
+        const tIva = document.getElementById("tIva");
+        const tIeps = document.getElementById("tIeps");
+        const tTotal = document.getElementById("tTotal");
+
+        const modalTotal = document.getElementById("modalTotal");
+        const payMethod = document.getElementById("payMethod");
+        const payAmount = document.getElementById("payAmount");
+        const payAmountHint = document.getElementById("payAmountHint");
+        const refBlock = document.getElementById("refBlock");
+        const payRef = document.getElementById("payRef");
+        const btnConfirmPay = document.getElementById("btnConfirmPay");
+        const payError = document.getElementById("payError");
+        const paySuccess = document.getElementById("paySuccess");
+        const payModal = new bootstrap.Modal(document.getElementById("payModal"));
+
+        // Toast
+        const toastEl = document.getElementById("appToast");
+        const toastTitle = document.getElementById("toastTitle");
+        const toastBody = document.getElementById("toastBody");
+        const toastTime = document.getElementById("toastTime");
+        const toast = new bootstrap.Toast(toastEl, { delay: 3200 });
+
+        // Ticket
+        const ticketCard = document.getElementById("ticketCard");
+        const btnHideTicket = document.getElementById("btnHideTicket");
+        const btnPrintTicket = document.getElementById("btnPrintTicket");
+        const ticketMeta = document.getElementById("ticketMeta");
+        const ticketLines = document.getElementById("ticketLines");
+        const ticketSubtotal = document.getElementById("ticketSubtotal");
+        const ticketIva = document.getElementById("ticketIva");
+        const ticketIeps = document.getElementById("ticketIeps");
+        const ticketTotal = document.getElementById("ticketTotal");
+        const ticketChange = document.getElementById("ticketChange");
+
+        // ----------------------------
+        // Helpers
+        // ----------------------------
+        function money(n) { return "$" + (Number(n || 0)).toFixed(2); }
+
+        function showToast(title, body) {
+            toastTitle.textContent = title;
+            toastBody.textContent = body;
+            toastTime.textContent = "ahora";
+            toast.show();
+        }
+
+        function persistCart() {
+            const arr = Array.from(cart.values());
+            localStorage.setItem("pos_cart_v1", JSON.stringify(arr));
+        }
+
+        function restoreCart() {
+            try {
+                const raw = localStorage.getItem("pos_cart_v1");
+                if (!raw) return;
+                const arr = JSON.parse(raw);
+                if (!Array.isArray(arr)) return;
+
+                cart.clear();
+                for (const x of arr) {
+                    cart.set(x.id, { ...x, qty: Math.max(1, Number(x.qty || 1)) });
+                }
+            } catch { }
+        }
+
+        function calcTotals() {
+            let subtotal = 0, iva = 0, ieps = 0, total = 0;
+
+            for (const item of cart.values()) {
+                const lineTotal = item.price * item.qty;
+                const iepsRate = item.iepsRate ? Number(item.iepsRate) : 0;
+
+                const factor = 1 + VAT_RATE + iepsRate;
+
+                const lineSubtotal = lineTotal / factor;
+                const lineIva = lineSubtotal * VAT_RATE;
+                const lineIeps = lineSubtotal * iepsRate;
+
+                subtotal += lineSubtotal;
+                iva += lineIva;
+                ieps += lineIeps;
+                total += lineTotal;
+            }
+                        
+            subtotal = Number(subtotal.toFixed(2));
+            iva = Number(iva.toFixed(2));
+            ieps = Number(ieps.toFixed(2));
+            total = Number(total.toFixed(2));
+
+            tSubtotal.textContent = money(subtotal);
+            tIva.textContent = money(iva);
+            tIeps.textContent = money(ieps);
+            tTotal.textContent = money(total);
+
+            btnCharge.disabled = cart.size === 0 || isCharging;
+
+            modalTotal.textContent = money(total);
+            return { subtotal, iva, ieps, total };
+        }
+
+        function setChargingState(on) {
+            isCharging = on;
+            btnCharge.disabled = on || cart.size === 0;
+            btnClear.disabled = on;
+            btnSearch.disabled = on;
+            searchInput.disabled = on;
+
+            btnConfirmPay.disabled = on;
+            btnConfirmPay.innerHTML = on
+                ? `<span class="spinner-border spinner-border-sm me-2"></span>Procesando...`
+                : `<i class="bi bi-check2-circle"></i> Confirmar pago`;
+        }
+
+        function syncPayAmountToMethod() {
+            const totals = calcTotals();
+
+            if (payMethod.value === "CARD") {
+                payAmount.value = totals.total.toFixed(2);
+                payAmount.setAttribute("readonly", "readonly");
+                payAmount.classList.add("bg-light");
+                payAmountHint.textContent = "Tarjeta: el monto no puede ser menor al Total";
+
+                refBlock.classList.remove("d-none");
+            } else {
+                payAmount.removeAttribute("readonly");
+                payAmount.classList.remove("bg-light");
+                payAmountHint.textContent = "Efectivo: Con cuanto te paga el cliente.";
+
+                refBlock.classList.add("d-none");
+                if (!payAmount.value || Number(payAmount.value) <= 0) {
+                    payAmount.value = totals.total.toFixed(2);
+                }
+            }
+        }
+
+        function renderResults(products) {
+            resultsEl.innerHTML = "";
+            if (!products || products.length === 0) {
+                resultsEl.innerHTML = `<div class="text-muted">Sin resultados.</div>`;
+                return;
+            }
+
+            for (const p of products) {
+                const badge = p.stock <= 0
+                    ? `<span class="badge text-bg-danger">Sin stock</span>`
+                    : `<span class="badge text-bg-success">Stock ${p.stock}</span>`;
+
+                const el = document.createElement("div");
+                el.className = "list-group-item d-flex justify-content-between align-items-center";
+                el.innerHTML = `
+                    <div>
+                        <div class="fw-semibold">${p.name}</div>
+                        <div class="small text-muted">${p.sku} • ${money(p.price)} • ${badge}</div>
+                    </div>
+                    <button class="btn btn-sm btn-primary" ${p.stock <= 0 ? "disabled" : ""} type="button">
+                        <i class="bi bi-plus-lg"></i>
+                    </button>
+                `;
+
+                el.querySelector("button").addEventListener("click", () => addToCart(p));
+                resultsEl.appendChild(el);
+                                
+                const existing = cart.get(p.id);
+                if (existing) existing.stock = p.stock;
+            }
+                        
+            for (const item of cart.values()) {
+                if (typeof item.stock === "number" && item.stock >= 0 && item.qty > item.stock) {
+                    item.qty = item.stock;
+                    if (item.qty <= 0) cart.delete(item.id);
+                }
+            }
+
+            renderCart();
+        }
+
+        function renderCart() {
+            cartEl.innerHTML = "";
+            cartEmpty.classList.toggle("d-none", cart.size > 0);
+
+            for (const item of cart.values()) {
+                const maxStock = (typeof item.stock === "number") ? item.stock : null;
+                const stockHint = (maxStock !== null)
+                    ? `<span class="badge text-bg-light border">Stock ${maxStock}</span>`
+                    : "";
+
+                const el = document.createElement("div");
+                el.className = "list-group-item";
+                el.innerHTML = `
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <div class="fw-semibold">${item.name}</div>
+                            <div class="small text-muted">${item.sku} • ${money(item.price)} ${stockHint}</div>
+                        </div>
+                        <button class="btn btn-sm btn-outline-danger" title="Quitar" type="button">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center mt-2">
+                        <div class="btn-group btn-group-sm" role="group">
+                            <button class="btn btn-outline-dark" data-act="dec" type="button">-</button>
+                            <button class="btn btn-outline-dark" disabled type="button">${item.qty}</button>
+                            <button class="btn btn-outline-dark" data-act="inc" type="button">+</button>
+                        </div>
+                        <div class="fw-semibold">${money(item.price * item.qty)}</div>
+                    </div>
+                `;
+
+                el.querySelector('button[title="Quitar"]').addEventListener("click", () => {
+                    cart.delete(item.id);
+                    persistCart();
+                    renderCart();
+                    calcTotals();
+                });
+
+                el.querySelector('[data-act="dec"]').addEventListener("click", () => {
+                    item.qty--;
+                    if (item.qty <= 0) cart.delete(item.id);
+                    persistCart();
+                    renderCart();
+                    calcTotals();
+                });
+
+                el.querySelector('[data-act="inc"]').addEventListener("click", () => {
+                    if (typeof item.stock === "number" && item.stock >= 0 && item.qty >= item.stock) {
+                        showToast("Stock", "No puedes exceder el stock disponible.");
+                        return;
+                    }
+                    item.qty++;
+                    persistCart();
+                    renderCart();
+                    calcTotals();
+                });
+
+                cartEl.appendChild(el);
+            }
+
+            calcTotals();
+        }
+
+        function addToCart(p) {
+            const existing = cart.get(p.id);
+            const stock = p.stock;
+
+            if (stock <= 0) {
+                showToast("Sin stock", "Este producto no tiene stock.");
+                return;
+            }
+
+            if (existing) {
+                if (typeof existing.stock === "number" && existing.qty >= existing.stock) {
+                    showToast("Stock", "No puedes exceder el stock disponible.");
+                    return;
+                }
+                existing.qty++;
+                existing.stock = stock;
+            } else {
+                cart.set(p.id, { id: p.id, sku: p.sku, name: p.name, price: p.price, iepsRate: p.iepsRate, qty: 1, stock });
+            }
+
+            persistCart();
+            renderCart();
+            showToast("Agregado", `${p.name} añadido al carrito.`);
+        }
+
+        function resetPayAlerts() {
+            payError.classList.add("d-none");
+            paySuccess.classList.add("d-none");
+            payError.textContent = "";
+            paySuccess.textContent = "";
+        }
+
+        async function readError(res) {
+            const ct = (res.headers.get("content-type") || "").toLowerCase();
+            const text = await res.text();
+
+            if (ct.includes("application/json")) {
+                try {
+                    const obj = JSON.parse(text);
+                    return obj?.message || obj?.error || text;
+                } catch {
+                    return text;
+                }
+            }
+            return text;
+        }
+                
+        async function apiGetProducts(term) {
+            const url = term
+                ? `/posapi/products?search=${encodeURIComponent(term)}`
+                : `/posapi/products`;
+
+            const res = await fetch(url);
+            if (!res.ok) throw new Error(await readError(res));
+            return await res.json();
+        }
+
+        async function apiCreateSale(items) {
+            const res = await fetch(`/posapi/sales`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ items })
+            });
+            if (!res.ok) throw new Error(await readError(res));
+            return await res.json();
+        }
+
+        async function apiPaySale(saleId, method, amount, reference) {
+            const body = { payments: [{ method, amount, reference: reference || null }] };
+
+            const res = await fetch(`/posapi/sales/${saleId}/payments`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(body)
+            });
+            if (!res.ok) throw new Error(await readError(res));
+            return await res.json();
+        }
+
+        // ----------------------------
+        // Ticket
+        // ----------------------------
+        let cartSnapshotForTicket = [];
+
+        function showTicket({ sale, payResult, method, amount, reference }) {
+            ticketCard.classList.remove("d-none");
+
+            const now = new Date();
+            const folio = sale.folio ?? `${sale.id}`;
+            ticketMeta.textContent = `Folio: ${folio} • ${now.toLocaleString()}`;
+
+            ticketLines.innerHTML = "";
+            for (const item of cartSnapshotForTicket) {
+                const line = document.createElement("div");
+                line.className = "d-flex justify-content-between small";
+                line.innerHTML = `<span>${item.qty} x ${item.name}</span><span>${money(item.price * item.qty)}</span>`;
+                ticketLines.appendChild(line);
+            }
+
+            ticketSubtotal.textContent = money(sale.subtotal);
+            ticketIva.textContent = money(sale.taxIva);
+            ticketIeps.textContent = money(sale.taxIeps);
+            ticketTotal.textContent = money(sale.total);
+            ticketChange.textContent = money(payResult.change);
+
+            const extra = method === "CARD"
+                ? `Tarjeta ${money(amount)} • Ref: ${reference}`
+                : `Efectivo ${money(amount)}`;
+
+            showToast("Venta pagada", `${extra}${payResult.change > 0 ? ` • Cambio ${money(payResult.change)}` : ""}`);
+        }
+
+        btnHideTicket.addEventListener("click", () => ticketCard.classList.add("d-none"));
+        btnPrintTicket.addEventListener("click", () => window.print());
+
+        // ----------------------------
+        // Search
+        // ----------------------------
+        async function doSearch(term) {
+            lastSearchTerm = term || "";
+            searchStatus.innerHTML = `<div class="text-muted">Buscando...</div>`;
+            try {
+                const products = await apiGetProducts(lastSearchTerm);
+                searchStatus.innerHTML = "";
+                renderResults(products);
+            } catch (e) {
+                searchStatus.innerHTML = `<div class="alert alert-danger">Error: ${e.message}</div>`;
+            }
+        }
+
+        // ----------------------------
+        // Events
+        // ----------------------------
+        btnSearch.addEventListener("click", () => doSearch(searchInput.value.trim()));
+
+        searchInput.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") btnSearch.click();
+        });
+                
+        searchInput.addEventListener("input", () => {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => {
+                const term = searchInput.value.trim();
+                if (term.length >= 2 || term.length === 0) doSearch(term);
+            }, 350);
+        });
+
+        btnClear.addEventListener("click", () => {
+            if (cart.size === 0) return;
+            if (!confirm("¿Vaciar carrito?")) return;
+            cart.clear();
+            persistCart();
+            renderCart();
+            showToast("Carrito", "Carrito vaciado.");
+        });
+
+        btnCharge.addEventListener("click", () => {
+            resetPayAlerts();
+            payMethod.value = "CASH";
+            payRef.value = "";
+            syncPayAmountToMethod();
+            payModal.show();
+            setTimeout(() => payAmount.focus(), 150);
+        });
+
+        payMethod.addEventListener("change", () => {
+            resetPayAlerts();
+            syncPayAmountToMethod();
+
+            if (payMethod.value === "CARD") {
+                setTimeout(() => payRef.focus(), 150);
+            } else {
+                setTimeout(() => payAmount.focus(), 150);
+            }
+        });
+
+        btnConfirmPay.addEventListener("click", async () => {
+            resetPayAlerts();
+            if (cart.size === 0) return;
+
+            const method = payMethod.value;
+            const totals = calcTotals();
+
+            let amount = Number(payAmount.value);
+            const reference = payRef.value.trim();
+                        
+            if (method === "CARD") {
+                amount = totals.total;
+                payAmount.value = totals.total.toFixed(2);
+            }
+
+            if (!amount || amount <= 0) {
+                payError.classList.remove("d-none");
+                payError.textContent = "Monto inválido.";
+                return;
+            }
+            if (method === "CARD" && !reference) {
+                payError.classList.remove("d-none");
+                payError.textContent = "Referencia requerida para tarjeta.";
+                return;
+            }
+
+            setChargingState(true);
+
+            try {                
+                cartSnapshotForTicket = Array.from(cart.values()).map(x => ({ ...x }));
+                                
+                const items = cartSnapshotForTicket.map(x => ({ productId: x.id, quantity: x.qty }));
+                const sale = await apiCreateSale(items);
+                                
+                const result = await apiPaySale(sale.id, method, amount, reference);
+                                
+                if (result.status !== "PAID") {
+                    payError.classList.remove("d-none");
+                    payError.textContent = result.message || "No se pudo completar el pago.";
+                    showToast("Pago no completado", result.message || "Revisa el pago.");
+                    setChargingState(false);
+                    return;
+                }
+
+                paySuccess.classList.remove("d-none");
+                paySuccess.textContent = `Pago OK. ${result.change > 0 ? "Cambio: " + money(result.change) : ""}`;
+                                
+                showTicket({ sale, payResult: result, method, amount, reference });
+                                
+                cart.clear();
+                persistCart();
+                renderCart();
+                                
+                await doSearch(lastSearchTerm);
+
+                setTimeout(() => payModal.hide(), 5000);
+            } catch (e) {
+                payError.classList.remove("d-none");
+                payError.textContent = e.message;
+                showToast("Error", e.message);
+            } finally {
+                setChargingState(false);
+            }
+        });
+
+        restoreCart();
+        renderCart();
+        calcTotals();
+        doSearch("");
+    </script>
+}

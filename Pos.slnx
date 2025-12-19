@@ -1,0 +1,17 @@
+<Solution>
+  <Project Path="Pos.Api/Pos.Api.csproj">
+    <BuildDependency Project="Pos.Application/Pos.Application.csproj" />
+    <BuildDependency Project="Pos.Infrastructure/Pos.Infrastructure.csproj" />
+  </Project>
+  <Project Path="Pos.Application/Pos.Application.csproj">
+    <BuildDependency Project="Pos.Domain/Pos.Domain.csproj" />
+  </Project>
+  <Project Path="Pos.Domain/Pos.Domain.csproj" />
+  <Project Path="Pos.Infrastructure/Pos.Infrastructure.csproj">
+    <BuildDependency Project="Pos.Application/Pos.Application.csproj" />
+    <BuildDependency Project="Pos.Domain/Pos.Domain.csproj" />
+  </Project>
+  <Project Path="Pos.Web/Pos.Web.csproj">
+    <BuildDependency Project="Pos.Application/Pos.Application.csproj" />
+  </Project>
+</Solution>
