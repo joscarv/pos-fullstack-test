@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Pos.Application.Abstraction;
+using Pos.Application.Dtos;
 using Pos.Domain.Entities;
 
 namespace Pos.Infrastructure.Data.Repositories;
@@ -22,13 +23,38 @@ internal class ProductRepository(PosDbContext dbContext) : IProductRepository
         return dbContext.Products.AsNoTracking().SingleOrDefaultAsync(p => p.Id == id, cancellationToken);
     }
 
-    public async Task<IEnumerable<Product>> GetSearchProductAsync(string? search, bool? isActive, int pageNumber, int pageSize, CancellationToken cancellationToken = default)
+    public async Task<ProductSearchResultDto> GetSearchProductAsync(string? search, bool? isActive, int pageNumber, int pageSize, CancellationToken cancellationToken = default)
     {
-        return await dbContext.Products.AsNoTracking()
-            .Where(p => p.Ean.ToString() == search || p.Sku == search || p.Name.Contains(search ?? string.Empty) && p.IsActive == isActive)
+        var query = dbContext.Products.AsNoTracking();
+
+        if (search is not null)
+            query = query.Where(p => p.Ean.ToString() == search || p.Sku == search || p.Name.Contains(search));
+
+        if (isActive.HasValue)
+            query = query.Where(p => p.IsActive == isActive.Value);
+
+        var total = await query.CountAsync(cancellationToken);
+
+        var items = await query
+            .OrderBy(p => p.Name)
             .Skip((pageNumber - 1) * pageSize)
             .Take(pageSize)
+            .Select(p => new ProductDto
+            {
+                Id = p.Id,
+                Ean = p.Ean,
+                Sku = p.Sku,
+                Name = p.Name,
+                Description = p.Description,
+                Price = p.Price,
+                IvaRate = p.IvaRate,
+                IepsRate = p.IepsRate,
+                IsActive = p.IsActive,
+                CreatedAtUtc = p.CreatedAtUtc
+            })
             .ToListAsync(cancellationToken);
+
+        return new ProductSearchResultDto(items, total, pageNumber, pageSize);
     }
 
     public Task UpdateAsync(Product product, CancellationToken cancellationToken = default)

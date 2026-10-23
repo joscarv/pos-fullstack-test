@@ -92,26 +92,7 @@ namespace Pos.Application.Services
             if (search?.Length > 100)
                 throw new ArgumentException("Search term must be less than or equal to 100 characters.", nameof(query.Search));
 
-            var products = await repository.GetSearchProductAsync(search, query.IsActive, query.PageNumber, query.PageSize, cancellationToken);
-
-            return new ProductSearchResultDto(
-                products.Select(p => new ProductDto
-                {
-                    Id = p.Id,
-                    Ean = p.Ean,
-                    Sku = p.Sku,
-                    Name = p.Name,
-                    Description = p.Description,
-                    Price = p.Price,
-                    IvaRate = p.IvaRate,
-                    IepsRate = p.IepsRate,
-                    IsActive = p.IsActive,
-                    CreatedAtUtc = p.CreatedAtUtc
-                }).ToList(),
-                products.Count(), 
-                query.PageNumber, 
-                query.PageSize
-            );
+            return await repository.GetSearchProductAsync(search, query.IsActive, query.PageNumber, query.PageSize, cancellationToken);
         }
 
         public async Task UpdateProductAsync(Guid productId, CreateProductDto productDto, CancellationToken cancellationToken = default)
