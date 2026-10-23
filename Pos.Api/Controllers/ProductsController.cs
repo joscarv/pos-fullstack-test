@@ -39,7 +39,7 @@ namespace Pos.Api.Controllers
             return CreatedAtAction(nameof(GetById), new { id = productId }, productId);
         }
 
-        [HttpPut("id:guid")]
+        [HttpPut("{id:guid}")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
