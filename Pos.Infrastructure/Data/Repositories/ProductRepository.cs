@@ -25,7 +25,7 @@ internal class ProductRepository(PosDbContext dbContext) : IProductRepository
     public async Task<IEnumerable<Product>> GetSearchProductAsync(string? search, bool? isActive, int pageNumber, int pageSize, CancellationToken cancellationToken = default)
     {
         return await dbContext.Products.AsNoTracking()
-            .Where(p => p.Ean.ToString() == search || p.Sku == search || p.Name.Contains(search ?? string.Empty))
+            .Where(p => p.Ean.ToString() == search || p.Sku == search || p.Name.Contains(search ?? string.Empty) && p.IsActive == isActive)
             .Skip((pageNumber - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync(cancellationToken);
