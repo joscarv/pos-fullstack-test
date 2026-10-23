@@ -23,7 +23,7 @@ namespace Pos.Application.Dtos
 
     public sealed class SaleItemDetailsDto
     {
-        public int ProductId { get; set; }
+        public Guid ProductId { get; set; }
         public string Sku { get; set; } = string.Empty;
         public string Name { get; set; } = string.Empty;
         public decimal UnitPrice { get; set; }

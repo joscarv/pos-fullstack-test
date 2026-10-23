@@ -24,10 +24,10 @@ namespace Pos.Api.Controllers
         public async Task<IActionResult> Create(CreateSaleDto dto)
         {
             var vatRate = _config.GetValue<decimal>("Taxes:VatRate");
-            
+
             var products = await _dbContext.Products
-                .Include(p => p.Inventory)
-                .Where(p => dto.Items.Select(i => i.ProductId).Contains(p.Id))
+                //.Include(p => p.Inventory)
+                //.Where(p => dto.Items.Select(i => i.ProductId).Contains(p.Id))
                 .ToListAsync();
 
             if (products.Count != dto.Items.Count)
@@ -44,7 +44,7 @@ namespace Pos.Api.Controllers
 
                 var lineTotal = product.Price * item.Quantity;
 
-                var iepsRate = product.IepsRate ?? 0m;
+                var iepsRate = product.IepsRate;
                 var factor = 1m + vatRate + iepsRate;
 
                 var lineSubtotal = (product.Price / factor) * item.Quantity;
@@ -73,7 +73,7 @@ namespace Pos.Api.Controllers
             sale.Subtotal = Math.Round(sale.Subtotal, 2);
             sale.TaxIva = Math.Round(sale.TaxIva, 2);
             sale.TaxIeps = Math.Round(sale.TaxIeps, 2);
-            sale.Total = Math.Round(sale.Total, 2);                        
+            sale.Total = Math.Round(sale.Total, 2);
 
             _dbContext.Sales.Add(sale);
             await _dbContext.SaveChangesAsync();
@@ -87,7 +87,7 @@ namespace Pos.Api.Controllers
                 TaxIva = sale.TaxIva,
                 TaxIeps = sale.TaxIeps,
                 Total = sale.Total
-            });            
+            });
         }
 
         [HttpGet("{id:int}")]
@@ -149,7 +149,7 @@ namespace Pos.Api.Controllers
                 .Include(s => s.Payments)
                 .FirstOrDefaultAsync(s => s.Id == id);
 
-            if (sale is null)return NotFound("La venta no existe.");
+            if (sale is null) return NotFound("La venta no existe.");
             if (sale.Status == SaleStatus.CANCELED) return BadRequest("La venta esta cancelada.");
             if (sale.Status == SaleStatus.PAID) return BadRequest("La venta ya esta pagada.");
 
@@ -250,7 +250,7 @@ namespace Pos.Api.Controllers
                 {
                     approvedTotalThisRequest += p.Amount;
                     if (method == PaymentMethod.CASH) approvedCashThisRequest += p.Amount;
-                }                
+                }
             }
 
             var approvedTotalOverall = sale.Payments

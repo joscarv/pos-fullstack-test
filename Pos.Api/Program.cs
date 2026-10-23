@@ -1,5 +1,5 @@
-using Microsoft.EntityFrameworkCore;
-using Pos.Infrastructure.Data;
+using Pos.Application;
+using Pos.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -8,8 +8,8 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-builder.Services.AddDbContext<PosDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("PosDb")));
+builder.Services.AddApplication();
+builder.Services.AddInfrastructure(builder.Configuration);
 
 var app = builder.Build();
 

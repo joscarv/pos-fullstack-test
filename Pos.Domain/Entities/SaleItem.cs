@@ -1,17 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace Pos.Domain.Entities
+﻿namespace Pos.Domain.Entities
 {
     public sealed class SaleItem
     {
         public int Id { get; set; }
         public int SaleId { get; set; }
-        public int ProductId { get; set; }
-                
+        public Guid ProductId { get; set; }
+
         public string SkuSnapshot { get; set; } = string.Empty;
         public string NameSnapshot { get; set; } = string.Empty;
         public decimal UnitPrice { get; set; }
